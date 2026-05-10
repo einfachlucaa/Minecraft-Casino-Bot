@@ -1,48 +1,53 @@
 # Minecraft Casino Bot
 
-Open-Source Casino-Bot fuer Minecraft Java Server. Der Bot ist komplett ueber YAML konfigurierbar und nicht mehr an HugoSMP gebunden. Du kannst HugoSMP, BlockBande oder jeden anderen Java-Server in `configs/config.yml` eintragen.
+An open-source casino bot for Minecraft Java servers. Fully configurable via YAML and not tied to any specific server — you can use HugoSMP, BlockBande, or any other Java server by editing `configs/config.yml`.
 
-## Voraussetzungen
+---
 
-- Node.js 18 oder neuer
-- Ein Minecraft Java Account fuer `auth: microsoft`
-- Zugriff auf einen Server, auf dem Chat, private Nachrichten und Economy-Befehle erlaubt sind
+## Requirements
+
+- Node.js 18 or newer
+- A Minecraft Java account (for `auth: microsoft`)
+- Access to a server that allows chat, private messages, and economy commands
+
+---
 
 ## Installation
 
+### 1. Install dependencies
+
 ```powershell
 npm install
+```
+
+### 2. Copy the example config
+
+```powershell
 Copy-Item configs/config.example.yml configs/config.yml
-npm start
 ```
 
-Beim ersten Start mit `auth: microsoft` zeigt der Bot einen Login-Code. Oeffne den angezeigten Link, melde dich mit deinem Microsoft-/Minecraft-Account an und bestaetige den Code.
+### 3. Set your bot account
 
-## Ordnerstruktur
+Open `configs/config.yml` and enter your bot account:
 
-```text
-configs/
-  config.yml             Deine aktive Konfiguration
-  config.example.yml     Vollstaendige Vorlage
-  servers/               Optionale ausgelagerte Serverprofile
-src/
-  config/                YAML-Loader
-  core/                  Minecraft-Verbindung und Protokollhandler
-  casino/                Casino-Logik
-  console/               Konsolenbefehle
-  ui/                    Konsolenausgabe
+```yaml
+account:
+  username: YourBotName
+  auth: microsoft
 ```
 
-## Einen Server Auswaehlen
+> With `auth: microsoft`, the bot will display a login code on first start.  
+> Open the shown link, sign in with your Microsoft/Minecraft account, and confirm the code.  
+> For offline/cracked servers, use `auth: offline` instead.
 
-In `configs/config.yml` steht der aktive Server:
+### 4. Select or create a server profile
 
 ```yaml
 profile:
   active: blockbande
 ```
 
-Der Name muss unter `serverProfiles` existieren:
+The name must exist under `serverProfiles`. Example built-in profile:
 
 ```yaml
 serverProfiles:
@@ -54,17 +59,71 @@ serverProfiles:
       fallbackVersion: "1.21.4"
 ```
 
-Zum Wechseln setzt du nur `profile.active` auf ein anderes Profil, zum Beispiel `hugosmp` oder `meinserver`.
+### 5. Adjust economy commands for your server
 
-## Eigenen Server Hinzufuegen
+```yaml
+commands:
+  money: "/money"
+  pay: "/pay {player} {amount}"
+  privateMessage: "/msg {player} {message}"
+```
 
-Fuege unter `serverProfiles` einen neuen Block ein:
+### 6. Configure bet limits, win chance, and reserve
+
+```yaml
+casino:
+  minBet: 100
+  maxBet: 1000
+  winChance: 0.30
+  payoutMultiplier: 2
+  reserve: 1000000
+  requireKnownBalance: true
+```
+
+### 7. Start the bot
+
+```powershell
+npm start
+```
+
+### 8. Fetch the balance after joining
+
+In the bot console, type:
+
+```
+balance
+```
+
+The panel will then display **Balance**, **Reserve**, and **Playable**. Live logs update automatically.
+
+---
+
+## Folder Structure
+
+```
+configs/
+  config.yml             Your active configuration
+  config.example.yml     Full template with all options
+  servers/               Optional separate server profiles
+src/
+  config/                YAML loader
+  core/                  Minecraft connection and protocol handler
+  casino/                Casino logic
+  console/               Console commands
+  ui/                    Console output / panel
+```
+
+---
+
+## Adding a Custom Server
+
+Add a new block under `serverProfiles` in `configs/config.yml`:
 
 ```yaml
 serverProfiles:
-  meinserver:
+  myserver:
     server:
-      host: play.meinserver.net
+      host: play.myserver.net
       port: 25565
       version: auto
       fallbackVersion: "1.21.8"
@@ -83,14 +142,14 @@ serverProfiles:
       balancePatterns: []
 ```
 
-Danach:
+Then activate it:
 
 ```yaml
 profile:
-  active: meinserver
+  active: myserver
 ```
 
-Wenn ein Server andere Befehle nutzt, passt du nur `commands` an:
+If the server uses different command formats, just adjust `commands`:
 
 ```yaml
 commands:
@@ -99,29 +158,35 @@ commands:
   privateMessage: "/tell {player} {message}"
 ```
 
-## Chat- Und Economy-Parser
+---
 
-Jeder Server formatiert Zahlungen anders. Wenn der Bot Einzahlungen, Kontostand oder private Nachrichten nicht erkennt, trage Regex-Patterns ein.
+## Chat and Economy Parsers
+
+Every server formats payment and balance messages differently. If the bot fails to detect deposits, balances, or private messages, add regex patterns:
 
 ```yaml
 parser:
   paymentPatterns:
-    - "^(?<player>[A-Za-z0-9_]{3,16}) hat dir (?<amount>[0-9.,]+) Coins gesendet"
+    - "^(?<player>[A-Za-z0-9_]{3,16}) sent you (?<amount>[0-9.,]+) Coins"
   balancePatterns:
     - "^Coins: (?<amount>[0-9.,]+)"
   privateMessagePatterns:
-    - "^Von (?<player>[A-Za-z0-9_]{3,16}): (?<message>.+)$"
+    - "^From (?<player>[A-Za-z0-9_]{3,16}): (?<message>.+)$"
 ```
 
-Wichtige Gruppen:
+**Required capture groups:**
 
-- `player`: Minecraft-Name des Spielers
-- `amount`: Geldbetrag
-- `message`: Inhalt der privaten Nachricht
+| Group | Meaning |
+|-------|---------|
+| `player` | Minecraft username of the player |
+| `amount` | Monetary amount |
+| `message` | Content of the private message |
 
-## Plugin- Und Anticheat-Channels
+---
 
-Manche Server fragen Plugin-Channels ab. Diese Antworten sind pro Server konfigurierbar:
+## Plugin and Anti-Cheat Channels
+
+Some servers query plugin channels. Responses are configurable per server profile:
 
 ```yaml
 minecraftClient:
@@ -136,19 +201,11 @@ minecraftClient:
     responseValue: 1
 ```
 
-## Account Und Auth
+---
 
-```yaml
-account:
-  username: DeinBotName
-  auth: microsoft
-```
+## Casino Settings
 
-Bei `auth: microsoft` muss der angemeldete Microsoft-Account den Minecraft Java Namen aus `username` besitzen. Fuer Offline-/Cracked-Server kannst du `auth: offline` setzen.
-
-## Casino Einstellen
-
-Systeme kannst du einzeln aktivieren oder deaktivieren:
+Enable or disable individual systems:
 
 ```yaml
 systems:
@@ -164,156 +221,109 @@ systems:
   balanceAcceptWindowMs: 15000
 ```
 
-`passiveBalance: false` ist absichtlich der sichere Standard. Der Bot akzeptiert Kontostand-Zeilen dann nur kurz nach einer eigenen `/money`-Abfrage. Dadurch werden Servermeldungen wie `Du hast 250$ an Spieler gezahlt` nicht mehr falsch als Bot-Kontostand gespeichert.
+> `passiveBalance: false` is the safe default. The bot only accepts balance lines shortly after its own `/money` query, preventing server messages like `You paid 250$ to PlayerName` from being misread as the bot's balance.
+
+**Casino parameters explained:**
 
 ```yaml
 casino:
-  minBet: 10000
-  maxBet: 1000000
-  winChance: 0.30
-  payoutMultiplier: 2
-  playerCooldownMs: 10000
-  playerDailyLimit: 20
-  reserve: 1000000
-  requireKnownBalance: true
+  minBet: 10000          # Minimum bet amount
+  maxBet: 1000000        # Maximum bet amount
+  winChance: 0.30        # Win probability (0.30 = 30%)
+  payoutMultiplier: 2    # Win pays out this multiple of the bet
+  playerCooldownMs: 10000  # Cooldown between bets per player (ms)
+  playerDailyLimit: 20   # Max games per player per day
+  reserve: 1000000       # Amount always kept in the bot's account
+  requireKnownBalance: true  # Require a known balance before accepting bets
 ```
 
-Der Bot nutzt kein getrenntes Bank-System mehr. Es zaehlt nur der echte Kontostand aus `commands.money`, also zum Beispiel `/money balance`.
+**How the reserve works:**  
+The bot has no separate bank system — it uses the real account balance from `commands.money` (e.g. `/money balance`). The reserve is always kept on the account. Example: if the account has `2,000,000$` and `reserve: 1000000`, then `1,000,000$` is playable. If a payout would push the balance below the reserve, the bot refuses the game or refunds the bet.
 
-Die Reserve bleibt immer auf dem Bot-Konto. Beispiel: Der Account hat `2.000.000$` und `reserve: 1000000`. Dann sind `1.000.000$` spielbar. Wenn ein Gewinn oder eine Rueckzahlung den Kontostand unter `1.000.000$` druecken wuerde, nimmt der Bot das Spiel nicht an oder zahlt den Einsatz zurueck.
+**`requireKnownBalance: true`** ensures the bot checks its balance before accepting bets. If the balance is unknown, it queries `/money balance` and safely refunds the bet until the balance is confirmed.
 
-Wichtig: `requireKnownBalance: true` sorgt dafuer, dass der Bot vor Spielen einen bekannten Kontostand braucht. Ist der Kontostand unbekannt, fragt er `/money balance` ab und zahlt den Einsatz sicher zurueck.
+---
 
-## Setup Tutorial
+## In-Game Usage for Players
 
-1. Installiere die Abhaengigkeiten:
+Players send a private message to the bot to receive instructions:
 
-```powershell
-npm install
+```
+/msg YourBotName info
 ```
 
-2. Kopiere die Beispiel-Konfiguration:
+To place a bet, they send coins directly to the bot:
 
-```powershell
-Copy-Item configs/config.example.yml configs/config.yml
+```
+/pay YourBotName 10000
 ```
 
-3. Trage in `configs/config.yml` deinen Bot-Account ein:
+The exact commands depend on the active server profile.
 
-```yaml
-account:
-  username: DeinBotName
-  auth: microsoft
-```
+---
 
-4. Waehle oder erstelle ein Serverprofil:
+## Console Commands
 
-```yaml
-profile:
-  active: blockbande
-```
+| Command | Description |
+|---------|-------------|
+| `help` | Show all available commands |
+| `status` | Show bot connection status |
+| `stats` | Show win/loss statistics |
+| `games` | Show active or recent games |
+| `health` | Show bot health info |
+| `queue` | Show the current bet queue |
+| `config` | Show current configuration |
+| `config set <key> <value>` | Update a config value at runtime |
+| `say <text>` | Send a public chat message |
+| `msg <name> <text>` | Send a private message to a player |
+| `pay <name> <amount>` | Pay a player |
+| `balance` | Fetch and display the current balance |
+| `events` | Show recent events/logs |
+| `panel` | Toggle or refresh the dashboard panel |
+| `cancel <player>` | Cancel an active game for a player |
+| `reconnect` | Reconnect to the server |
+| `stop` | Stop the bot |
 
-5. Passe die Economy-Befehle an deinen Server an:
+---
 
-```yaml
-commands:
-  money: "/money"
-  pay: "/pay {player} {amount}"
-  privateMessage: "/msg {player} {message}"
-```
+## Starting With a Different Config
 
-6. Stelle Einsatz, Gewinnchance und Reserve ein:
-
-```yaml
-casino:
-  minBet: 100
-  maxBet: 1000
-  winChance: 0.30
-  payoutMultiplier: 2
-  reserve: 1000000
-  requireKnownBalance: true
-```
-
-7. Starte den Bot:
-
-```powershell
-npm start
-```
-
-8. Frage nach dem Join einmal den Kontostand ab:
-
-```text
-balance
-```
-
-Danach zeigt das Panel `Kontostand`, `Reserve` und `Spielbar`. Die Live-Logs im Panel aktualisieren sich automatisch.
-
-## Nutzung Im Spiel
-
-Spieler schreiben dem Bot eine private Nachricht, um die Anleitung zu bekommen:
-
-```text
-/msg DeinBotName info
-```
-
-Zum Spielen senden sie Geld an den Bot:
-
-```text
-/pay DeinBotName 10000
-```
-
-Die Befehle sind serverabhaengig und kommen aus dem aktiven Profil.
-
-## Konsolenbefehle
-
-```text
-help
-status
-stats
-games
-health
-queue
-config
-config set <key> <wert>
-say <text>
-msg <name> <text>
-pay <name> <betrag>
-balance
-events
-panel
-cancel <spieler>
-reconnect
-stop
-```
-
-## Start Mit Anderer Config
-
-Aktives Profil einmalig per Terminal setzen:
+**Set the active profile once via terminal (temporary):**
 
 ```powershell
 $env:CONFIG_PROFILE="hugosmp"
 npm start
 ```
 
-Komplett andere Config-Datei nutzen:
+**Use a completely different config file:**
 
 ```powershell
-$env:CONFIG_PATH="C:\Pfad\zu\config.yml"
+$env:CONFIG_PATH="C:\Path\to\config.yml"
 npm start
 ```
 
-## Optional: Ausgelagerte Serverprofile
+---
 
-Wenn `serverProfiles.<name>` nicht in `configs/config.yml` existiert, sucht der Bot automatisch nach:
+## Optional: Separate Server Profile Files
 
-```text
+If a profile is not found in `configs/config.yml`, the bot automatically looks for:
+
+```
 configs/servers/<name>.yml
 ```
 
-Das ist praktisch, wenn du sehr viele Serverprofile getrennt versionieren willst. Fuer einfache Setups reicht eine einzige `configs/config.yml`.
+This is useful when managing many server profiles separately. For simple setups, a single `configs/config.yml` is sufficient.
 
-## Pruefen
+---
+
+## Lint / Type Check
 
 ```powershell
 npm run check
 ```
+
+---
+
+## License
+
+This project is open-source. See `LICENSE` for details.
