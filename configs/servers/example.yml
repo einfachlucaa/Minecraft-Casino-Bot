@@ -1,0 +1,52 @@
+# Vorlage fuer einen neuen Minecraft-Server.
+# Datei kopieren, umbenennen und profile.active in configs/config.yml darauf setzen.
+
+server:
+  host: example.net
+  port: 25565
+  version: auto
+  fallbackVersion: "1.21.8"
+
+commands:
+  # Passe diese Commands an den jeweiligen Server an.
+  money: "/money balance"
+  pay: "/pay {player} {amount}"
+  privateMessage: "/msg {player} {message}"
+  chatPrefix: "[BOT]"
+  # Wird nach dem Join ausgefuehrt, z.B. Lobby-/Serverwechsel.
+  join:
+  # - "/server citybuild"
+  joinMessages:
+  # - "Casino Bot online."
+
+parser:
+  privateMessagePatterns:
+  # - "^Von (?<player>[A-Za-z0-9_]{3,16}): (?<message>.+)$"
+  paymentPatterns:
+  # - "^(?<player>[A-Za-z0-9_]{3,16}) hat dir (?<amount>[0-9.,]+) Coins gesendet"
+  balancePatterns:
+  # - "^Coins: (?<amount>[0-9.,]+)"
+  economyKeywords:
+    - pay
+    - geld
+    - money
+    - balance
+    - kontostand
+    - guthaben
+    - konto
+    - zahlung
+    - received
+    - gezahlt
+    - ueberweis
+
+minecraftClient:
+  resourcePack:
+    enabled: true
+    firstResult: 3
+    finalResult: 0
+    finalDelayMs: 1000
+  pluginChannels:
+    register: []
+    checks: []
+    aliases: {}
+    responseValue: 1

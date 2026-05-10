@@ -1,0 +1,155 @@
+# Minecraft Casino Bot
+# Zentrale Konfiguration. Der Bot ist nicht an HugoSMP gebunden.
+# Aktiven Server unter profile.active auswaehlen und beliebige Server unter serverProfiles anlegen.
+
+profile:
+  active: nitromc
+  serverDirectory: configs/servers
+
+account:
+  username: Einfachlucaa
+  auth: microsoft
+
+support:
+  discord: einfachlucaa
+
+systems:
+  casino: true
+  payments: true
+  privateMessages: true
+  balance: true
+  passiveBalance: false
+  antiCheat: true
+  autoBalanceOnJoin: true
+  panel: true
+  panelRefreshMs: 5000
+  balanceAcceptWindowMs: 15000
+
+casino:
+  minBet: 1000
+  maxBet: 50000
+  winChance: 0.30
+  payoutMultiplier: 2
+  drawDelayMs: 2500
+  playerCooldownMs: 10000
+  playerDailyLimit: 20
+  reserve: 10000
+  requireKnownBalance: true
+
+messages:
+  tutorial:
+    - "So spielst du: Sende Geld an {bot} mit einem Einsatz von {minBet} bis {maxBet}."
+    - "Chance: {winChance}%. Wenn du gewinnst, zahlt der Bot dir {payoutMultiplier}x deinen Einsatz aus."
+    - "Bei falschem Betrag, Cooldown, Tageslimit oder zu wenig spielbarem Guthaben bekommst du deinen Einsatz automatisch zurueck. Support auf Discord: {supportDiscord}."
+  accepted: "Einsatz {bet} angenommen. Die Ziehung startet jetzt, bitte kurz warten."
+  won: "Gewonnen. Deine Auszahlung betraegt {payout} und wird jetzt gesendet."
+  lost: "Leider verloren. Dein Einsatz von {bet} bleibt auf dem Bot-Konto."
+  refund: "Rückzahlung: {amount}. Der Bot sendet dir den Betrag jetzt automatisch zurück."
+  firstPaymentTutorial: "Erste Zahlung: Du bekommst dein Geld zurück. Das Tutorial wurde gesendet, ab jetzt kannst du normal spielen."
+  alreadyActive: "Du hast bereits ein laufendes Spiel. Bitte warte auf die aktuelle Ziehung."
+  cooldown: "Cooldown aktiv: Bitte warte noch {seconds} Sekunden, bevor du erneut spielst."
+  dailyLimit: "Tageslimit erreicht: Du hast heute bereits {count}/{limit} Spiele gespielt."
+  tooLow: "Dein Einsatz ist zu niedrig. Das Minimum liegt bei {minBet}."
+  tooHigh: "Dein Einsatz ist zu hoch. Das Maximum liegt bei {maxBet}."
+  unknownBalance: "Der Bot kennt den aktuellen Kontostand gerade nicht sicher und fragt ihn neu ab."
+  reserveTooLow: "Der Bot hat nicht genug spielbares Guthaben oberhalb der Reserve."
+  reserveTooLowDuringDraw: "Das spielbare Guthaben wurde während der Ziehung zu niedrig. Dein Einsatz wird sicher zurückgezahlt."
+
+bot:
+  reconnectDelayMs: 5000
+  joinMessageDelayMs: 2500
+  commandDelayMs: 1000
+  autoEat: true
+  autoEatFoodBelow: 20
+  autoEatHealthBelow: 20
+
+minecraftClient:
+  locale: de_DE
+  viewDistance: 8
+  chatColors: true
+  skinParts: 127
+  mainHand: 1
+  enableTextFiltering: false
+  enableServerListing: true
+  particleStatus: 0
+  brand: vanilla
+  keepAlive: false
+  hideErrors: false
+  resourcePack:
+    enabled: true
+    firstResult: 3
+    finalResult: 0
+    finalDelayMs: 1000
+  pluginChannels:
+    register: []
+    checks: []
+    aliases: {}
+    responseValue: 1
+
+debug:
+  packets: false
+
+serverProfiles:
+  hugosmp:
+    server:
+      host: java.hugosmp.net
+      port: 25565
+      version: auto
+      fallbackVersion: "1.21.8"
+    commands:
+      money: "/money"
+      pay: "/pay {player} {amount}"
+      privateMessage: "/msg {player} {message}"
+      chatPrefix: "[BOT]"
+      join: []
+      joinMessages: []
+    parser:
+      privateMessagePatterns: []
+      paymentPatterns: []
+      balancePatterns: []
+
+  blockbande:
+    server:
+      host: blockbande.de
+      port: 25565
+      version: auto
+      fallbackVersion: "1.21.4"
+    commands:
+      money: "/money"
+      pay: "/pay {player} {amount}"
+      privateMessage: "/msg {player} {message}"
+      chatPrefix: "[BOT]"
+      join: []
+      joinMessages: []
+    parser:
+      privateMessagePatterns: []
+      paymentPatterns: []
+      balancePatterns:
+        - "(?:Kontostand|Balance|Guthaben|Money|Konto|Privatkonto)[^0-9$€]*(?<amount>[0-9][0-9.,]*)\\s*(?:\\$|€|dollar|coins?)?"
+        - "(?:Du\\s+hast|Du\\s+besitzt|Du\\s+verf(?:ü|ue)gst\\s+(?:über|ueber))\\s*(?:\\$\\s*)?(?<amount>[0-9][0-9.,]*)\\s*(?:\\$|€|dollar|coins?)"
+    minecraftClient:
+      hideErrors: true
+      particleStatus: 2
+      pluginChannels:
+        register:
+          - xaeroworldmap:main
+          - xaero:main
+          - minimap:main
+          - iip:main
+          - iip:check
+          - ix:main
+          - ix:check
+          - minimapa:check
+          - fairxaero:check
+        checks:
+          - iip:check
+          - ix:check
+          - minimapa:check
+          - fairxaero:check
+        aliases:
+          ip: iip
+          iip: iip
+          ix: ix
+          minimapa: minimapa
+          fairxaero: fairxaero
+        responseValue: 1
