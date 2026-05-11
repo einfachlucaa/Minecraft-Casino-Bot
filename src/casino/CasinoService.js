@@ -4,13 +4,14 @@
  * CasinoService
  *
  * FIX: handlePrivateMessage now only sends tutorial if the message is NOT from
- *      the bot itself and the sender is a real player. Previously the tutorial
- *      was always triggered on any private message, including bot-outbound echoes.
- *
- * FIX: handlePayment now correctly processes the casino flow after the tutorial
- *      has been sent to first-time depositors, instead of stopping early.
+ *      the bot itself and the sender is a real player.
+ * FIX: handlePayment now correctly processes the casino flow after the tutorial.
+ * FEAT: tutorialPlayers persisted to disk — known players survive bot restarts.
+ * FEAT: Game results logged to logs/ folder.
  */
 
+const fs   = require('fs');
+const path = require('path');
 const { money } = require('../ui/logger');
 
 class CasinoService {
@@ -31,6 +32,49 @@ class CasinoService {
       totalLost     : 0,
       totalRefunded : 0,
     };
+
+    // Persistent storage paths
+    this._logsDir        = path.resolve('logs');
+    this._playersFile    = path.join(this._logsDir, 'known_players.json');
+    this._ensureLogsDir();
+    this._loadKnownPlayers();
+  }
+
+  // ── persistence ───────────────────────────────────────────────────────────
+
+  _ensureLogsDir() {
+    try { fs.mkdirSync(this._logsDir, { recursive: true }); } catch (_) {}
+  }
+
+  _loadKnownPlayers() {
+    try {
+      const raw  = fs.readFileSync(this._playersFile, 'utf8');
+      const list = JSON.parse(raw);
+      if (Array.isArray(list)) list.forEach((p) => this.tutorialPlayers.add(String(p)));
+      this.logger.log('INFO', `Bekannte Spieler geladen: ${this.tutorialPlayers.size}`);
+    } catch (_) {
+      // file doesn't exist yet — first run
+    }
+  }
+
+  _saveKnownPlayers() {
+    try {
+      fs.writeFileSync(this._playersFile, JSON.stringify([...this.tutorialPlayers], null, 2));
+    } catch (err) {
+      this.logger.log('WARN', `Spieler-Datei konnte nicht gespeichert werden: ${err.message}`);
+    }
+  }
+
+  _logGameResult(player, type, details) {
+    try {
+      this._ensureLogsDir();
+      const date    = new Date();
+      const dateStr = date.toISOString().slice(0, 10); // YYYY-MM-DD
+      const logFile = path.join(this._logsDir, `games_${dateStr}.log`);
+      const time    = date.toTimeString().slice(0, 8);
+      const line    = `[${time}] [${type.padEnd(6)}] ${player} | ${details}\n`;
+      fs.appendFileSync(logFile, line);
+    } catch (_) {}
   }
 
   // ── public query helpers ──────────────────────────────────────────────────
@@ -108,7 +152,6 @@ class CasinoService {
     // Ignore own messages echoed back by the server
     if (sender === botName) return;
 
-    if (this.hasTutorialPlayer(username)) return;
     this.markTutorialPlayer(username);
     this.sendTutorial(username, actions);
   }
@@ -131,8 +174,6 @@ class CasinoService {
    * continues.
    */
   handlePayment(player, amount, actions) {
-    // Strip economy keywords appended without space (e.g. NitroMC: "zQuiet_erhalten" -> "zQuiet_")
-    player = String(player).replace(/(?:erhalten|received|bekommen|gezahlt|paid|sent)\.?$/i, '').trim();
     if (!player || !Number.isInteger(amount) || amount <= 0) return;
 
     const key     = this.playerKey(player);
@@ -223,16 +264,16 @@ class CasinoService {
       this.stats.wins       += 1;
       this.stats.totalPaid  += payout;
       this.adjustAccount(-payout);
-      // Delay payWithMsg slightly so the server has time to recognize the player
       setTimeout(() => actions.payWithMsg(display, payout, this._render('won', { bet: game.bet, payout })), 500);
       setTimeout(() => actions.balance(), 2000);
       this.addEvent('WIN', `${display} wins ${money(payout)}. Balance: ${this._fmtBalance()} | Playable: ${this._fmtPlayable()}`);
+      this._logGameResult(display, 'WIN', `bet=${money(game.bet)} payout=${money(payout)} balance=${this._fmtBalance()}`);
     } else {
       this.stats.losses     += 1;
       this.stats.totalLost  += game.bet;
-      // for losses, send message then (no pay)
       actions.msg(display, this._render('lost', { bet: game.bet }));
       this.addEvent('LOSS', `${display} loses ${money(game.bet)}. Balance: ${this._fmtBalance()} | Playable: ${this._fmtPlayable()}`);
+      this._logGameResult(display, 'LOSS', `bet=${money(game.bet)} balance=${this._fmtBalance()}`);
     }
 
     this.activeGames.delete(key);
@@ -243,11 +284,11 @@ class CasinoService {
     this.stats.refunds       += 1;
     this.stats.totalRefunded += amount;
     this.adjustAccount(-amount);
-    // Send reason message first, then coordinate the refund pay + confirmation message
     actions.msg(display, reason);
     setTimeout(() => actions.payWithMsg(display, amount, this._render('refund', { amount })), 300);
     setTimeout(() => actions.balance(), 1500);
     this.addEvent('REFUND', `${display}: ${money(amount)} refunded. Reason: ${reason}`);
+    this._logGameResult(display, 'REFUND', `amount=${money(amount)} reason=${reason}`);
   }
 
   cancelGame(player) {
@@ -317,7 +358,10 @@ class CasinoService {
 
   markTutorialPlayer(player) {
     const key = this.playerKey(player);
-    if (key) this.tutorialPlayers.add(key);
+    if (key && !this.tutorialPlayers.has(key)) {
+      this.tutorialPlayers.add(key);
+      this._saveKnownPlayers();
+    }
   }
 
   // ── events ────────────────────────────────────────────────────────────────

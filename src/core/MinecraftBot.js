@@ -140,23 +140,31 @@ class MinecraftBot extends EventEmitter {
     const text = String(message || '').trim();
     const prefix = this.config.chatPrefix || '';
     const botMessage = prefix && !text.startsWith(prefix) ? `${prefix} ${text}` : text;
-    const original = String(player || '').trim();
-    const stripped = this.stripBedrockPrefix(original);
-    const candidates = this.buildPlayerCommandCandidates(original);
-    const sendName = candidates[0] || stripped;
+    const original = String(player || '');
+    const stripped = original.replace(/^[.!]/, '');
+    // Prefer sending the original (with bedrock prefix) when present, otherwise use stripped name.
+    // Some servers require the leading . or ! for bedrock players, so try that first when available.
+    const sendName = (/^[.!]/.test(original) ? original : stripped);
+
+    // build a player argument suitable for servers (quote if contains special chars)
+    const quoteIfNeeded = (name) => {
+      if (!name) return '';
+      // allow leading . or ! and alnum, underscore, dot, hyphen without quoting
+      if (/^[.!]?[A-Za-z0-9_.-]+$/.test(name)) return name;
+      return `"${String(name).replace(/"/g, '\\"')}"`;
+    };
 
     // remember last targeted command so failures can be retried with the original form
     this.lastTargetedCommand = {
       type: 'msg',
       original,
       stripped,
-      candidates,
       payload: botMessage,
       timestamp: Date.now(),
-      retryCount: 0
+      retried: false
     };
 
-    const playerArg = this.quotePlayerArg(sendName);
+    const playerArg = quoteIfNeeded(sendName);
     const formatted = this.formatCommand(this.config.privateMessageCommand, { player: playerArg, message: botMessage });
     this.logger.log('INFO', `Sende PrivateMessage: ${formatted.substring(0, 200)}`);
     return this.sendChat(formatted);
@@ -167,22 +175,26 @@ class MinecraftBot extends EventEmitter {
     const text = String(message || '').trim();
     const prefix = this.config.chatPrefix || '';
     const botMessage = prefix && !text.startsWith(prefix) ? `${prefix} ${text}` : text;
-    const original = String(player || '').trim();
-    const stripped = this.stripBedrockPrefix(original);
-    const candidates = this.buildPlayerCommandCandidates(original);
-    const sendName = candidates[0] || stripped;
+    const original = String(player || '');
+    const stripped = original.replace(/^[.!]/, '');
+    const sendName = (/^[.!]/.test(original) ? original : stripped);
+
+    const quoteIfNeeded = (name) => {
+      if (!name) return '';
+      if (/^[.!]?[A-Za-z0-9_.-]+$/.test(name)) return name;
+      return `"${String(name).replace(/"/g, '\\"')}"`;
+    };
 
     this.lastTargetedCommand = {
       type: 'msg',
       original,
       stripped,
-      candidates,
       payload: botMessage,
       timestamp: Date.now(),
-      retryCount: 0
+      retried: false
     };
 
-    const playerArg = this.quotePlayerArg(sendName);
+    const playerArg = quoteIfNeeded(sendName);
     const formatted = this.formatCommand(this.config.privateMessageCommand, { player: playerArg, message: botMessage });
     this.logger.log('INFO', `Sende PrivateMessage (immediate): ${formatted.substring(0, 200)}`);
 
@@ -194,21 +206,27 @@ class MinecraftBot extends EventEmitter {
   }
 
   pay(player, amount) {
-    const original = String(player || '').trim();
-    const stripped = this.stripBedrockPrefix(original);
-    const candidates = this.buildPlayerCommandCandidates(original);
-    const sendName = candidates[0] || stripped;
+    const original = String(player || '');
+    const stripped = original.replace(/^[.!]/, '');
+    // Prefer sending the original (with bedrock prefix) when present, otherwise use stripped name.
+    // Some servers require the leading . or ! for bedrock players, so try that first when available.
+    const sendName = (/^[.!]/.test(original) ? original : stripped);
     this.lastTargetedCommand = {
       type: 'pay',
       original,
       stripped,
-      candidates,
       payload: amount,
       timestamp: Date.now(),
-      retryCount: 0   // how many retries have been attempted
+      retried: false
     };
 
-    const playerArg = this.quotePlayerArg(sendName);
+    const quoteIfNeeded = (name) => {
+      if (!name) return '';
+      if (/^[.!]?[A-Za-z0-9_.-]+$/.test(name)) return name;
+      return `"${String(name).replace(/"/g, '\\"')}"`;
+    };
+
+    const playerArg = quoteIfNeeded(sendName);
     const formatted = this.formatCommand(this.config.payCommand, { player: playerArg, amount });
     this.logger.log('INFO', `Sende Pay: ${formatted}`);
     return this.sendChat(formatted);
@@ -227,47 +245,6 @@ class MinecraftBot extends EventEmitter {
       const value = values[key];
       return value == null ? '' : String(value);
     });
-  }
-
-  stripBedrockPrefix(player) {
-    return String(player || '').trim().replace(/^[.!]/, '');
-  }
-
-  buildPlayerCommandCandidates(player) {
-    const original = String(player || '').trim();
-    const stripped = this.stripBedrockPrefix(original);
-    const hasBedRockPrefix = original !== stripped; // starts with '.' or '!'
-    const candidates = [];
-
-    const add = (name) => {
-      const value = String(name || '').trim();
-      if (!value) return;
-      if (candidates.some((entry) => entry.toLowerCase() === value.toLowerCase())) return;
-      candidates.push(value);
-    };
-
-    if (hasBedRockPrefix) {
-      // For Bedrock players (name starts with '.' or '!'):
-      // Keep the original prefix form first – the server uses it to identify Bedrock players.
-      // Fall back to stripped (no prefix) and the other prefix variant.
-      add(original);          // e.g. ".zKingYzy1937"  ← try first (what the server sent us)
-      add(stripped);          // e.g.  "zKingYzy1937"  ← fallback: some plugins strip prefix
-      add(original.startsWith('.') ? `!${stripped}` : `.${stripped}`); // other prefix variant
-    } else {
-      // Java player: no prefix, try as-is.
-      add(original);
-    }
-
-    return candidates;
-  }
-
-  quotePlayerArg(player) {
-    const name = String(player || '').trim();
-    if (!name) return '';
-    // Allow names that consist of alphanumerics, underscores, hyphens, dots,
-    // and optionally a leading '.' or '!' (Bedrock prefix) – all safe unquoted.
-    if (/^[.!]?[A-Za-z0-9_.-]+$/.test(name)) return name;
-    return `"${name.replace(/"/g, '\\"')}"`;
   }
 
   connect() {
@@ -375,14 +352,8 @@ class MinecraftBot extends EventEmitter {
     });
 
     client.on('playerJoin', () => {
-      this.connected = true;
-      this.phase = 'play';
-      this.accountName = client.username || this.accountName;
-      this.lastDisconnectReason = '';
-      this.logger.log('OK', `Bot ist online als ${this.accountName}.`);
-      this.sendClientSettings();
-      this.registerBrand();
-      this.runJoinActions();
+      if (this.connected) return; // already triggered via login fallback
+      this._onSpawn();
     });
 
     client.on('login', (data) => {
@@ -390,6 +361,15 @@ class MinecraftBot extends EventEmitter {
       this.dimension = data?.dimensionName || data?.dimension || this.dimension;
       this.gameMode = data?.gameMode ?? this.gameMode;
       this.logger.log('INFO', 'Login-Paket empfangen, warte auf Play-State...');
+      // Fallback: some servers (proxies/NitroMC) never fire playerJoin.
+      // If we're still not connected after 5s, treat login as spawn.
+      clearTimeout(this._loginFallbackTimer);
+      this._loginFallbackTimer = setTimeout(() => {
+        if (!this.connected) {
+          this.logger.log('INFO', 'playerJoin nicht empfangen – Login-Fallback aktiv.');
+          this._onSpawn();
+        }
+      }, 5000);
     });
 
     client.on('cookie_request', (data) => this.handleCookieRequest(data));
@@ -446,6 +426,18 @@ class MinecraftBot extends EventEmitter {
       this.logger.log('ERROR', error.message);
       this.scheduleReconnect();
     });
+  }
+
+  _onSpawn() {
+    this.connected = true;
+    this.phase = 'play';
+    this.accountName = (this.client && this.client.username) || this.accountName;
+    this.lastDisconnectReason = '';
+    clearTimeout(this._loginFallbackTimer);
+    this.logger.log('OK', `Bot ist online als ${this.accountName}.`);
+    this.sendClientSettings();
+    this.registerBrand();
+    this.runJoinActions();
   }
 
   sendClientSettings() {
@@ -665,9 +657,10 @@ class MinecraftBot extends EventEmitter {
     try {
       const lowered = text.toLowerCase();
       const notOnline = /(player not found|player not found!|player not online)/i.test(lowered) || /spieler ist nicht online/i.test(lowered);
-      if (notOnline && this.lastTargetedCommand && (this.lastTargetedCommand.retryCount || 0) < (this.lastTargetedCommand.candidates || []).length - 1 && (Date.now() - this.lastTargetedCommand.timestamp) < 8000) {
+      if (notOnline && this.lastTargetedCommand && !this.lastTargetedCommand.retried && (Date.now() - this.lastTargetedCommand.timestamp) < 5000) {
         const cmd = this.lastTargetedCommand;
-        if (cmd.original) {
+        // only retry if original and stripped differ (e.g. bedrock prefix like .name vs name)
+        if (cmd.original && cmd.original !== cmd.stripped) {
           try {
             const nameLower = String(cmd.stripped || '').toLowerCase();
             const origLower = String(cmd.original || '').toLowerCase();
@@ -675,27 +668,24 @@ class MinecraftBot extends EventEmitter {
             const genericShortNotOnline = lowered.length <= 80 && /\b(player not found|spieler ist nicht online)\b/i.test(lowered);
 
             if (mentionsTarget || genericShortNotOnline) {
-              const retryCount = (cmd.retryCount || 0) + 1;
-
-              // Walk through the pre-built candidates list in order.
-              // candidates[0] was the initial send, so pick candidates[retryCount] next.
-              //   Bedrock ".Player" → candidates = [".Player", "Player", "!Player"]
-              //   Bedrock "!Player" → candidates = ["!Player", "Player", ".Player"]
-              //   Java    "Player"  → candidates = ["Player"]
-              const candidates = cmd.candidates || [cmd.original];
-              const retryName = candidates[retryCount] || cmd.original;
+              const quoteIfNeeded = (name) => {
+                if (!name) return '';
+                if (/^[.!]/.test(name)) return name;
+                if (/^[A-Za-z0-9_]+$/.test(name)) return name;
+                return `"${String(name).replace(/"/g, '\\"')}"`;
+              };
 
               let formatted;
               if (cmd.type === 'pay') {
-                formatted = this.formatCommand(this.config.payCommand, { player: this.quotePlayerArg(retryName), amount: cmd.payload });
+                formatted = this.formatCommand(this.config.payCommand, { player: quoteIfNeeded(cmd.original), amount: cmd.payload });
               } else {
-                formatted = this.formatCommand(this.config.privateMessageCommand, { player: this.quotePlayerArg(retryName), message: cmd.payload });
+                formatted = this.formatCommand(this.config.privateMessageCommand, { player: quoteIfNeeded(cmd.original), message: cmd.payload });
               }
 
-              this.logger.log('INFO', `Retry ${retryCount}/2 (player not online): ${formatted.substring(0, 200)}`);
-              cmd.retryCount = retryCount;
-              cmd.timestamp = Date.now();
+              this.logger.log('INFO', `Retry send: ${formatted}`);
+              cmd.retried = true;
               this.sendChat(formatted);
+              this.lastTargetedCommand.timestamp = Date.now();
               return;
             }
           } catch (e) {

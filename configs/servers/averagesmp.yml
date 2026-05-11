@@ -1,0 +1,43 @@
+﻿# Server-Profil: NitroMC
+
+server:
+  host: averagesmp.de
+  port: 25565
+  version: "1.21.8"
+  fallbackVersion: "1.21.8"
+
+commands:
+  money: "/money"
+  pay: "/pay {player} {amount}"
+  privateMessage: "/msg {player} {message}"
+  chatPrefix: "[BOT]"
+  join: []
+  joinMessages: []
+
+parser:
+  privateMessagePatterns:
+    - "^\\[?(?<player>[.!]?[A-Za-z0-9_]{3,16})\\s*->\\s*(?:ich|du|dir|mir|me|you|EinfachLucaa)\\]?\\s*:?\\s*(?<message>.+)$"
+  paymentPatterns:
+    - "NITROMC.?\\s*(?<player>[.!]?[A-Za-z0-9_]{3,16})\\s*(?:hat|sendet|zahlt|ueberweist|überweist).*?(?:dir|an\\s+dich).*?\\$?\\s*(?<amount>[0-9][0-9.,]*\\.?)"
+    - "NITROMC.?\\s*(?:Du\\s+hast|Du\\s+erhaeltst|Du\\s+erhältst|Du\\s+bekommst).*?\\$?\\s*(?<amount>[0-9][0-9.,]*\\.?)\\s*(?:von|from)\\s*(?<player>[.!]?[A-Za-z0-9_]{3,16})"
+    - "NITROMC.?\\s*(?<player>[.!]?[A-Za-z0-9_]{3,16})\\s*(?:->|>|»)\\s*(?:EinfachLucaa|dir|du|ich|you)\\s*:?\\s*\\$?\\s*(?<amount>[0-9][0-9.,]*\\.?)"
+    - "\\[?(?:Zahlung|Payment|Pay|NITROMC)\\]?\\s*:?\\s*(?<player>[.!]?[A-Za-z0-9_]{3,16})\\s*(?:->|>|»)\\s*(?:EinfachLucaa|dir|du|ich|you)\\s*:?\\s*\\$?\\s*(?<amount>[0-9][0-9.,]*\\.?)"
+  balancePatterns:
+    - "Kontostand\\s*:?\\s*\\$?\\s*(?<amount>[0-9][0-9.,]*\\.?)"
+    - "NITROMC.?Kontostand\\s*:?\\s*\\$?\\s*(?<amount>[0-9][0-9.,]*\\.?)"
+  economyKeywords:
+    - pay
+    - geld
+    - money
+    - balance
+    - kontostand
+    - guthaben
+    - konto
+    - zahlung
+    - received
+    - gezahlt
+    - ueberweis
+
+minecraftClient:
+  hideErrors: true
+  particleStatus: 2

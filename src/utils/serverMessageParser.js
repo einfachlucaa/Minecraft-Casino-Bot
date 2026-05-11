@@ -2,7 +2,6 @@ const { stripFormatting } = require('./text');
 const { parseMoney, moneyPattern } = require('./money');
 
 const PLAYER = String.raw`[.!]?[A-Za-z0-9_\-]{1,20}`;
-const PLAYER_STOP = String.raw`[.!]?[A-Za-z0-9_\-]{1,20}?(?=\s*(?:erhalten|received|bekommen|gezahlt|paid|sent)|\s|$)`;
 
 function normalizeMessage(text) {
   return stripFormatting(text)
@@ -65,8 +64,8 @@ function parsePayment(text, botName, config = {}) {
   const arrow = String.raw`(?:->|>|»)`;
   const patterns = [
     bracketedPayment,
-    new RegExp(`^(?:\\[[^\\]]+\\])?\\s*Du\\s*hast\\s*\\$?\\s*([0-9][0-9.,]*)\\s*von\\s*(${PLAYER_STOP})\\s*erhalten\\.?$`, 'i'),
-    new RegExp(`^(?:\\[[^\\]]+\\])?\\s*Du\\s+hast\\s+${amount}\\s+(?:von|from)\\s+(${PLAYER_STOP})\\s*(?:erhalten|received|bekommen)?\\.?$`, 'i'),
+    new RegExp(`^(?:\\[[^\\]]+\\])?\\s*Du\\s*hast\\s*\\$?\\s*([0-9][0-9.,]*)\\s*von\\s*(${PLAYER})\\s*erhalten\\.?$`, 'i'),
+    new RegExp(`^(?:\\[[^\\]]+\\])?\\s*Du\\s+hast\\s+${amount}\\s+(?:von|from)\\s+(${PLAYER})\\s*(?:erhalten|received|bekommen)?\\.?$`, 'i'),
     new RegExp(`^(?:\\[[^\\]]+\\])?\\s*(?:Zahlung|Payment|Pay)\\s*:?\\s*(${PLAYER})\\s*(?:->|>|»)\\s*(?:${bot}|dir|you)\\s*:?\\s*${amount}`, 'i'),
     new RegExp(`^(${PLAYER})\\s+(?:hat\\s+dir|paid\\s+you|sent\\s+you|ueberweist\\s+dir)\\s+${amount}`, 'i'),
     new RegExp(`^(${PLAYER})\\s+(?:hat|sendet|zahlt|ueberweist|\\u00fcberweist)\\s+(?:dir|an\\s+dich)\\s+${amount}`, 'i'),
@@ -92,7 +91,7 @@ function parsePayment(text, botName, config = {}) {
 
 function parseBroadPayment(message) {
   const moneyValue = String.raw`(?<amount>\$?\s*[0-9][0-9.,]*\s*(?:\$|\u20ac|dollar|coins?)?)`;
-  const playerValue = String.raw`(?<player>[.!]?[A-Za-z0-9_-]{1,20}?)(?=\s*(?:erhalten|received|bekommen|gezahlt|paid|sent)|\s|$|[^A-Za-z0-9_])`;
+  const playerValue = String.raw`(?<player>[.!]?[A-Za-z0-9_]{3,16})`;
   const patterns = [
     new RegExp(`(?:Du\\s+hast|Du\\s+erh(?:a|\\u00e4)ltst|Du\\s+bekommst|You\\s+received).*?${moneyValue}\\s+(?:von|from)\\s+${playerValue}`, 'i'),
     new RegExp(`${playerValue}.*?(?:hat\\s+dir|sendet\\s+dir|zahlt\\s+dir|ueberweist\\s+dir|\\u00fcberweist\\s+dir|paid\\s+you|sent\\s+you).*?${moneyValue}`, 'i'),
@@ -125,6 +124,8 @@ function parseBalance(text, config = {}) {
   const amount = moneyPattern();
   const requiredMoney = requiredMoneyPattern();
   const patterns = [
+    // NitroMC format: "NITROMC»Kontostand: $89,942.456" or similar server-prefixed formats
+    new RegExp(`»\\s*(?:Kontostand|Balance|Guthaben|Money|Konto|Geld|Coins?)\\s*:\\s*${amount}`, 'i'),
     new RegExp(`(?:Kontostand|Balance|Guthaben|Money|Konto|Geld|Coins?)\\s*:\\s*${amount}`, 'i'),
     new RegExp(`(?:Kontostand|Balance|Guthaben|Money|Konto|Privatkonto|Geld|Coins?)\\s*(?:von|for)?\\s*[^0-9$\\u20ac]{0,60}\\s*${amount}`, 'i'),
     new RegExp(`(?:Dein\\s+Kontostand|Dein\\s+Guthaben|Your\\s+balance)\\s*(?:betr(?:\\u00e4|ae)gt|ist|is)?\\s*:?\\s*${amount}`, 'i'),
@@ -170,7 +171,16 @@ function looksLikeChatLine(message) {
   if (firstColon <= 0) return false;
 
   const header = message.slice(0, firstColon).trim().toLowerCase();
-  if (/(privatkonto|\b(kontostand|balance|guthaben|money|konto|geld|coins?|dollar|zahlung|payment|pay)\b)/.test(header)) return false;
+
+  // If the header contains economy keywords it's a balance message, not chat
+  if (/(privatkonto|kontostand|balance|guthaben|money|konto|geld|coins?|dollar|zahlung|payment|pay)/.test(header)) return false;
+
+  // Handle server-prefixed formats like "NITROMC»Kontostand: $..." — check part after » too
+  const arrowIdx = header.indexOf('»');
+  if (arrowIdx >= 0) {
+    const afterArrow = header.slice(arrowIdx + 1).trim();
+    if (/(kontostand|balance|guthaben|money|konto|geld|coins?)/.test(afterArrow)) return false;
+  }
 
   return firstColon <= 80 && /[a-z0-9_]/i.test(header);
 }

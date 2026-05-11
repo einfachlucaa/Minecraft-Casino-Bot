@@ -18,7 +18,7 @@ systems:
   payments: true
   privateMessages: true
   balance: true
-  passiveBalance: false
+  passiveBalance: true
   antiCheat: true
   autoBalanceOnJoin: true
   panel: true
@@ -26,14 +26,14 @@ systems:
   balanceAcceptWindowMs: 15000
 
 casino:
-  minBet: 1000
-  maxBet: 50000
+  minBet: 500
+  maxBet: 10000
   winChance: 0.30
   payoutMultiplier: 2
   drawDelayMs: 2500
   playerCooldownMs: 10000
   playerDailyLimit: 20
-  reserve: 10000
+  reserve: 1000
   requireKnownBalance: true
 
 messages:
@@ -44,8 +44,8 @@ messages:
   accepted: "Einsatz {bet} angenommen. Die Ziehung startet jetzt, bitte kurz warten."
   won: "Gewonnen. Deine Auszahlung betraegt {payout} und wird jetzt gesendet."
   lost: "Leider verloren. Dein Einsatz von {bet} bleibt auf dem Bot-Konto."
-  refund: "Rückzahlung: {amount}. Der Bot sendet dir den Betrag jetzt automatisch zurück."
-  firstPaymentTutorial: "Erste Zahlung: Du bekommst dein Geld zurück. Das Tutorial wurde gesendet, ab jetzt kannst du normal spielen."
+  refund: "Rueckzahlung: {amount}. Der Bot sendet dir den Betrag jetzt automatisch zurueck."
+  firstPaymentTutorial: "Erste Zahlung: Du bekommst dein Geld zurueck. Das Tutorial wurde gesendet, ab jetzt kannst du normal spielen."
   alreadyActive: "Du hast bereits ein laufendes Spiel. Bitte warte auf die aktuelle Ziehung."
   cooldown: "Cooldown aktiv: Bitte warte noch {seconds} Sekunden, bevor du erneut spielst."
   dailyLimit: "Tageslimit erreicht: Du hast heute bereits {count}/{limit} Spiele gespielt."
@@ -53,7 +53,7 @@ messages:
   tooHigh: "Dein Einsatz ist zu hoch. Das Maximum liegt bei {maxBet}."
   unknownBalance: "Der Bot kennt den aktuellen Kontostand gerade nicht sicher und fragt ihn neu ab."
   reserveTooLow: "Der Bot hat nicht genug spielbares Guthaben oberhalb der Reserve."
-  reserveTooLowDuringDraw: "Das spielbare Guthaben wurde während der Ziehung zu niedrig. Dein Einsatz wird sicher zurückgezahlt."
+  reserveTooLowDuringDraw: "Das spielbare Guthaben wurde waehrend der Ziehung zu niedrig. Dein Einsatz wird sicher zurueckgezahlt."
 
 bot:
   reconnectDelayMs: 5000
@@ -73,7 +73,7 @@ minecraftClient:
   enableServerListing: true
   particleStatus: 0
   brand: vanilla
-  keepAlive: false
+  keepAlive: true
   hideErrors: false
   resourcePack:
     enabled: true
